@@ -35,7 +35,7 @@ function Toast({ toast }: { toast: ToastItem }) {
 export function Toaster() {
   const toasts = useSessionStore((s) => s.toasts);
   return (
-    <div className="pointer-events-none fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-2">
+    <div className="pointer-events-none fixed left-1/2 top-20 z-50 flex -translate-x-1/2 flex-col items-center gap-2">
       <AnimatePresence>
         {toasts.map((t) => (
           <Toast key={t.id} toast={t} />
