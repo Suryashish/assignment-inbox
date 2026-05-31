@@ -63,6 +63,7 @@ interface SessionState {
   setConfig: (c: Snapshot['config']) => void;
   startCooldown: (ms: number) => void;
   pushActivity: (items: ActivityItem[]) => void;
+  clearActivity: () => void;
   pushToast: (kind: ToastKind, message: string) => void;
   removeToast: (id: number) => void;
   resolveUser: (id: string) => { name: string; color: string };
@@ -102,6 +103,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   startCooldown: (ms) => set({ cooldownUntil: Date.now() + ms }),
   pushActivity: (items) =>
     set((s) => ({ activity: [...items, ...s.activity].slice(0, 24) })),
+  clearActivity: () => set({ activity: [] }),
   pushToast: (kind, message) =>
     set((s) => ({ toasts: [...s.toasts, { id: ++toastSeq, kind, message }].slice(-4) })),
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),

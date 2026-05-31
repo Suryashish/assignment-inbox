@@ -3,6 +3,7 @@
 import { colorHex } from '@ctb/shared';
 import { useSessionStore } from '@/store/sessionStore';
 import { useMyTileCount } from '@/hooks/useMyTileCount';
+import { resetGame } from '@/lib/actions';
 
 export function TopBar() {
   const me = useSessionStore((s) => s.me);
@@ -10,6 +11,12 @@ export function TopBar() {
   const connection = useSessionStore((s) => s.connection);
   const myTiles = useMyTileCount();
   const connected = connection === 'connected';
+
+  const onNewGame = () => {
+    if (window.confirm('Start a fresh game? This clears the board for everyone.')) {
+      resetGame();
+    }
+  };
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 p-4">
@@ -33,20 +40,30 @@ export function TopBar() {
         </span>
       </div>
 
-      <div className="glass flex items-center gap-3 rounded-full px-4 py-2">
-        {me && (
-          <>
-            <span
-              className="h-3 w-3 rounded-[3px]"
-              style={{ background: colorHex(me.color), boxShadow: `0 0 8px ${colorHex(me.color)}` }}
-            />
-            <span className="max-w-[8rem] truncate text-sm font-medium">{me.name}</span>
-            <span className="h-3 w-px bg-[var(--hairline)]" />
-            <span className="mono text-xs text-[var(--text-dim)]">
-              <span className="text-[var(--text)]">{myTiles}</span> tiles
-            </span>
-          </>
-        )}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onNewGame}
+          title="Clear the board and start fresh (affects everyone)"
+          className="glass flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium text-[var(--text-dim)] transition hover:text-white hover:shadow-[0_0_18px_-4px_var(--accent)]"
+        >
+          <span className="text-sm leading-none">↻</span> New game
+        </button>
+
+        <div className="glass flex items-center gap-3 rounded-full px-4 py-2">
+          {me && (
+            <>
+              <span
+                className="h-3 w-3 rounded-[3px]"
+                style={{ background: colorHex(me.color), boxShadow: `0 0 8px ${colorHex(me.color)}` }}
+              />
+              <span className="max-w-[8rem] truncate text-sm font-medium">{me.name}</span>
+              <span className="h-3 w-px bg-[var(--hairline)]" />
+              <span className="mono text-xs text-[var(--text-dim)]">
+                <span className="text-[var(--text)]">{myTiles}</span> tiles
+              </span>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

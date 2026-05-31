@@ -166,6 +166,19 @@ export async function computeLeaderboard(tiles?: ClaimedTile[]): Promise<Leaderb
   });
 }
 
+/**
+ * Start a fresh game: clear the board, leaderboard, locks and cooldowns. We keep
+ * the `seq` counter monotonic (so any client that misses the reset event still
+ * applies subsequent claims) and keep `users` so display names survive.
+ */
+export async function resetBoard(): Promise<void> {
+  const [lockKeys, cdKeys] = await Promise.all([
+    redis.keys('ctb:lock:*'),
+    redis.keys('ctb:cd:*'),
+  ]);
+  await redis.del(KEYS.grid, KEYS.lb, ...lockKeys, ...cdKeys);
+}
+
 /** Full state for a joining (or reconnecting) client. */
 export async function getSnapshot(online: number): Promise<Snapshot> {
   const tiles = await getTiles();

@@ -34,6 +34,11 @@ export function rejoin(): void {
   );
 }
 
+/** Start a fresh game — clears the shared board for everyone. */
+export function resetGame(): void {
+  getSocket().emit('reset');
+}
+
 /**
  * Optimistically paint a tile, then emit the claim and reconcile on the ack.
  * The server stays authoritative; this just makes the click feel instant.

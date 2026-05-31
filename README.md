@@ -86,8 +86,8 @@ captures is **one React render**, not 100.
 
 Deltas travel over a Redis **pub/sub channel**, and app instances hold no
 authoritative state — so scaling out is just *run more instances behind a sticky
-load balancer*, no rewrite. The 1.5 s cooldown also acts as a natural rate
-governor (≤ 0.67 claims/sec/user).
+load balancer*, no rewrite. The per-user cooldown also acts as a natural rate
+governor, bounding total write rate to ~`users / cooldown`.
 
 The load test proves it — **200 clients, ~9.9 batches/client/sec** (bounded by the
 tick, flat as clients grow):
@@ -107,9 +107,12 @@ LOADTEST_CLIENTS=200 LOADTEST_DURATION=12000 pnpm --filter @ctb/server loadtest
 | Monorepo | pnpm workspaces + a shared **typed contract** | Client and server share event/types/constants — no drift. |
 
 ### Game rules & features
-- **Overwrite + cooldown** — capture any tile, 1.5 s between captures.
-- **Lock / shield** — a freshly captured tile is protected ~2.5 s from others
+- **Overwrite + cooldown** — capture any tile; a short, configurable cooldown
+  between captures (rate limit + natural load governor).
+- **Lock / shield** — a freshly captured tile is briefly protected from others
   (configurable; `0` = pure overwrite).
+- **New game** — the **New game** button clears the shared board for everyone and
+  starts fresh (server wipes grid/leaderboard, broadcasts `board:reset`).
 - **Leaderboard + stats** — tiles owned, **largest contiguous cluster** (area
   control, via flood-fill), live online count, your tile count.
 - **Zoom / pan**, capture ripples, hover glow, cooldown ring, live activity feed,

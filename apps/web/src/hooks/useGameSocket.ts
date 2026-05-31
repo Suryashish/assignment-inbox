@@ -54,6 +54,13 @@ export function useGameSocket(): void {
     socket.on('tiles:update', onTiles);
     socket.on('leaderboard:update', (lb) => session().setLeaderboard(lb));
     socket.on('presence:update', ({ online }) => session().setOnline(online));
+    const onReset = () => {
+      grid().applySnapshot([]);
+      session().setLeaderboard([]);
+      session().clearActivity();
+      session().pushToast('info', 'A fresh game started — board cleared.');
+    };
+    socket.on('board:reset', onReset);
 
     if (socket.connected) onConnect();
 
@@ -63,6 +70,7 @@ export function useGameSocket(): void {
       socket.off('tiles:update', onTiles);
       socket.off('leaderboard:update');
       socket.off('presence:update');
+      socket.off('board:reset', onReset);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);

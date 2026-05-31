@@ -12,7 +12,7 @@ import {
   type Snapshot,
 } from '@ctb/shared';
 import { KEYS, redis } from './redis';
-import { claim, getSnapshot, registerUser } from './gameService';
+import { claim, getSnapshot, registerUser, resetBoard } from './gameService';
 import type { IO, IOSocket } from './ioTypes';
 
 /** Per-socket flood guard. Cheap defense; the Lua cooldown is the real authority. */
@@ -62,6 +62,17 @@ export function registerSocketHandlers(io: IO): void {
         }
       } catch {
         ack({ ok: false, reason: 'invalid' });
+      }
+    });
+
+    socket.on('reset', async () => {
+      if (!socket.data.userId) return; // must have joined
+      try {
+        await resetBoard();
+        io.emit(EVENTS.boardReset);
+        io.emit(EVENTS.leaderboardUpdate, []);
+      } catch {
+        /* ignore */
       }
     });
 

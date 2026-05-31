@@ -28,27 +28,37 @@ export function Board() {
   };
 
   return (
-    <div className="absolute inset-0 z-[1] flex items-center justify-center">
+    <div className="absolute inset-0 z-[1]">
       <TransformWrapper
-        minScale={0.5}
+        minScale={0.4}
         maxScale={6}
         initialScale={1}
         centerOnInit
+        limitToBounds={false}
         doubleClick={{ disabled: true }}
         wheel={{ step: 0.08 }}
         panning={{ velocityDisabled: true }}
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
+            {/* Content fills the wrapper and flex-centers the grid, so the board
+                stays centered + visible regardless of init measurement timing. */}
             <TransformComponent
               wrapperStyle={{ width: '100%', height: '100%', cursor: 'grab' }}
-              contentStyle={{ display: 'block' }}
+              contentStyle={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
               <div
                 className="rounded-2xl p-3"
                 style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 50px 130px -55px #000',
+                  background: 'rgba(255,255,255,0.03)',
+                  boxShadow:
+                    'inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.4), 0 50px 130px -55px #000',
                 }}
               >
                 <div style={gridStyle}>
