@@ -1,0 +1,238 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Inter, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+
+  /* One restrained pastel accent threads the whole UI together. */
+  --accent: #9aa6ff;
+  --accent-soft: rgba(154, 166, 255, 0.16);
+
+  --bg: #08080a;
+  --surface: rgba(20, 20, 26, 0.66);
+  --surface-strong: rgba(26, 26, 33, 0.9);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --text: #ecedf2;
+  --text-dim: #9a9ba6;
+  --text-faint: #62636e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  letter-spacing: -0.01em;
+}
+
+/* Layered backdrop: deep base + pastel radial glow + faint grain. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(154, 166, 255, 0.12), transparent 60%),
+    radial-gradient(90% 70% at 85% 110%, rgba(143, 227, 196, 0.08), transparent 55%),
+    var(--bg);
+}
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass surfaces ──────────────────────────────────────────────── */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 1px 0 inset rgba(255, 255, 255, 0.05),
+    0 24px 70px -28px rgba(0, 0, 0, 0.85);
+}
+
+.hairline {
+  border: 1px solid var(--hairline);
+}
+
+.micro-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tiles ───────────────────────────────────────────────────────── */
+.tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+  transition:
+    transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.18s ease,
+    box-shadow 0.2s ease;
+  will-change: transform;
+}
+.tile:hover {
+  transform: scale(1.18);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 8px 18px -8px rgba(0, 0, 0, 0.9);
+  z-index: 3;
+}
+.tile--owned {
+  background: var(--c);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 10px -3px var(--c);
+}
+.tile--owned:hover {
+  transform: scale(1.16);
+  box-shadow:
+    0 0 16px -2px var(--c),
+    0 0 0 1px rgba(255, 255, 255, 0.35);
+  z-index: 3;
+}
+.tile--mine {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.tile--pending {
+  background: var(--c);
+  animation: pendingPulse 0.85s ease-in-out infinite;
+}
+.tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Capture ripple — remounted by React on each new seq, so it plays once. */
+.ripple {
+  position: absolute;
+  inset: -1px;
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--c);
+  animation: rippleOut 0.55s ease-out forwards;
+  z-index: 4;
+}
+
+@keyframes rippleOut {
+  from {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+@keyframes pendingPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 6px -2px var(--c);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 16px -1px var(--c);
+  }
+}
+
+/* shield shimmer for freshly-locked tiles (applied briefly via class) */
+.tile--shield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
+  background-size: 220% 220%;
+  animation: shimmer 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+    opacity: 0.9;
+  }
+  to {
+    background-position: -40% 0;
+    opacity: 0;
+  }
+}
+
+.dot-pulse {
+  position: relative;
+}
+.dot-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: currentColor;
+  animation: dotPulse 1.8s ease-out infinite;
+}
+@keyframes dotPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+/* thin scrollbars inside panels */
+.scroll-soft {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.scroll-soft::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-soft::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .ripple,
+  .tile--pending,
+  .dot-pulse::after,
+  .tile--shield::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
