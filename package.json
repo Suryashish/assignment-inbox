@@ -1,0 +1,22 @@
+{
+  "name": "capture-the-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time shared grid — claim tiles, see everyone live.",
+  "packageManager": "pnpm@9.15.1",
+  "scripts": {
+    "dev": "concurrently -n server,web -c green,magenta \"pnpm --filter @ctb/server dev\" \"pnpm --filter @ctb/web dev\"",
+    "build": "pnpm --filter @ctb/server build && pnpm --filter @ctb/web build",
+    "start": "concurrently -n server,web -c green,magenta \"pnpm --filter @ctb/server start\" \"pnpm --filter @ctb/web start\"",
+    "test": "pnpm --filter @ctb/server test",
+    "loadtest": "pnpm --filter @ctb/server loadtest",
+    "lint": "pnpm --filter @ctb/web lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
