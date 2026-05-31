@@ -1,0 +1,10 @@
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+.git
+.gitignore
+**/*.log
+**/.env
+**/.env.local
+plan.md
