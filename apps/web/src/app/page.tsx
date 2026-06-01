@@ -9,6 +9,7 @@ import { TopBar } from '@/components/hud/TopBar';
 import { Leaderboard } from '@/components/hud/Leaderboard';
 import { ActivityFeed } from '@/components/hud/ActivityFeed';
 import { CooldownIndicator } from '@/components/hud/CooldownIndicator';
+import { MobileStats } from '@/components/hud/MobileStats';
 import { Toaster } from '@/components/ui/Toaster';
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
               <Leaderboard />
               <ActivityFeed />
             </aside>
+            <MobileStats />
             <CooldownIndicator />
           </motion.div>
         )}

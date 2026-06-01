@@ -10,7 +10,7 @@ function ZoomButton({ label, onClick, children }: { label: string; onClick: () =
     <button
       aria-label={label}
       onClick={onClick}
-      className="glass flex h-9 w-9 items-center justify-center rounded-xl text-[var(--text-dim)] transition hover:text-white hover:shadow-[0_0_18px_-4px_var(--accent)]"
+      className="glass flex h-10 w-10 items-center justify-center rounded-xl text-base text-[var(--text-dim)] transition hover:text-white hover:shadow-[0_0_18px_-4px_var(--accent)] sm:h-9 sm:w-9 sm:text-sm"
     >
       {children}
     </button>
@@ -28,15 +28,17 @@ export function Board() {
   };
 
   return (
-    <div className="absolute inset-0 z-[1]">
+    // touch-action none lets the pan/zoom lib own touch gestures (pinch + drag).
+    <div className="absolute inset-0 z-[1]" style={{ touchAction: 'none' }}>
       <TransformWrapper
-        minScale={0.4}
+        minScale={0.3}
         maxScale={6}
         initialScale={1}
         centerOnInit
         limitToBounds={false}
         doubleClick={{ disabled: true }}
         wheel={{ step: 0.08 }}
+        pinch={{ step: 5 }}
         panning={{ velocityDisabled: true }}
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
