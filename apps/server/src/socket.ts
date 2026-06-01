@@ -13,18 +13,37 @@ import {
 } from '@ctb/shared';
 import { KEYS, redis } from './redis';
 import { claim, getSnapshot, registerUser, resetBoard } from './gameService';
+import { TokenBucket, isLoopback } from './rateLimit';
 import type { IO, IOSocket } from './ioTypes';
 
-/**
- * Per-socket flood guard. Cheap defense against abusive bursts; the Lua cooldown
- * is the real rate limit. Kept well below the cooldown so it never rejects
- * legitimate fast play (which should hit the proper 'cooldown' path instead).
- */
-const CLAIM_MIN_INTERVAL_MS = Math.min(40, Math.floor(COOLDOWN_MS / 2));
 const USERID_RE = /^[A-Za-z0-9_-]{6,40}$/;
+
+// Abuse limits (defense in depth alongside the per-user Lua cooldown):
+//  • per-socket token bucket — bounds claims/sec on a single connection, even if
+//    it rapidly re-joins to cycle userIds and dodge the per-user cooldown.
+//  • per-IP connection cap — stops one host opening unlimited sockets.
+const BUCKET_CAPACITY = 60;
+const BUCKET_REFILL_PER_SEC = 60; // comfortably above legit single-user play
+const MAX_CONN_PER_IP = 20;
+
+const buckets = new Map<string, TokenBucket>();
+const ipConnections = new Map<string, number>();
 
 export function registerSocketHandlers(io: IO): void {
   io.on('connection', (socket: IOSocket) => {
+    const ip = socket.handshake.address || 'unknown';
+
+    // Per-IP connection cap (loopback exempt so local multi-tab dev isn't blocked).
+    if (!isLoopback(ip)) {
+      const count = (ipConnections.get(ip) ?? 0) + 1;
+      if (count > MAX_CONN_PER_IP) {
+        socket.disconnect(true);
+        return;
+      }
+      ipConnections.set(ip, count);
+    }
+    buckets.set(socket.id, new TokenBucket(BUCKET_CAPACITY, BUCKET_REFILL_PER_SEC));
+
     schedulePresence(io);
 
     socket.on('join', async (payload, ack) => {
@@ -51,11 +70,8 @@ export function registerSocketHandlers(io: IO): void {
       if (!userId || !color) return ack({ ok: false, reason: 'invalid' });
       if (!payload || !isValidTileId(payload.tileId)) return ack({ ok: false, reason: 'invalid' });
 
-      const now = Date.now();
-      if (socket.data.lastClaimAt && now - socket.data.lastClaimAt < CLAIM_MIN_INTERVAL_MS) {
-        return ack({ ok: false, reason: 'invalid' });
-      }
-      socket.data.lastClaimAt = now;
+      const bucket = buckets.get(socket.id);
+      if (bucket && !bucket.take()) return ack({ ok: false, reason: 'invalid' });
 
       try {
         const result = await claim(userId, payload.tileId, color);
@@ -80,7 +96,15 @@ export function registerSocketHandlers(io: IO): void {
       }
     });
 
-    socket.on('disconnect', () => schedulePresence(io));
+    socket.on('disconnect', () => {
+      buckets.delete(socket.id);
+      if (!isLoopback(ip)) {
+        const count = (ipConnections.get(ip) ?? 1) - 1;
+        if (count <= 0) ipConnections.delete(ip);
+        else ipConnections.set(ip, count);
+      }
+      schedulePresence(io);
+    });
   });
 }
 

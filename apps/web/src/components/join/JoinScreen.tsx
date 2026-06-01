@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { PALETTE, sanitizeName, isValidName } from '@ctb/shared';
 import { GlowButton } from '@/components/ui/GlowButton';
 import { ColorSwatch } from '@/components/ui/ColorSwatch';
+import { JoinBackdrop } from '@/components/join/JoinBackdrop';
 import { joinGame } from '@/lib/actions';
 import { useSessionStore } from '@/store/sessionStore';
 
@@ -25,12 +26,13 @@ export function JoinScreen() {
   };
 
   return (
-    <div className="relative z-10 flex h-dvh w-screen items-center justify-center p-6">
+    <div className="relative z-10 flex h-dvh w-screen items-center justify-center overflow-hidden p-6">
+      <JoinBackdrop />
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 26 }}
-        className="glass w-full max-w-md rounded-3xl p-8"
+        className="glass relative z-10 w-full max-w-md rounded-3xl p-8"
       >
         <div className="mb-1 flex items-center gap-2">
           <span className="h-2.5 w-2.5 rotate-45 rounded-[2px]" style={{ background: 'var(--accent)', boxShadow: '0 0 12px var(--accent)' }} />

@@ -6,7 +6,6 @@ export interface SocketData {
   userId?: string;
   name?: string;
   color?: string;
-  lastClaimAt?: number;
 }
 
 type NoInterServer = Record<string, never>;

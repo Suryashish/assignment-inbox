@@ -34,6 +34,13 @@ export type ToastKind = 'error' | 'warn' | 'info';
 
 export interface ActivityItem {
   key: number;
+  ownerId: string;
+  name: string;
+  color: string;
+  count: number; // consecutive captures by this user, coalesced into one row
+}
+export interface Capture {
+  ownerId: string;
   name: string;
   color: string;
 }
@@ -62,7 +69,7 @@ interface SessionState {
   setLeaderboard: (lb: LeaderboardEntry[]) => void;
   setConfig: (c: Snapshot['config']) => void;
   startCooldown: (ms: number) => void;
-  pushActivity: (items: ActivityItem[]) => void;
+  recordCaptures: (captures: Capture[]) => void;
   clearActivity: () => void;
   pushToast: (kind: ToastKind, message: string) => void;
   removeToast: (id: number) => void;
@@ -70,6 +77,7 @@ interface SessionState {
 }
 
 let toastSeq = 0;
+let activitySeq = 0;
 
 export const useSessionStore = create<SessionState>((set, get) => ({
   me: loadIdentity(),
@@ -101,8 +109,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return { leaderboard, namesById };
     }),
   startCooldown: (ms) => set({ cooldownUntil: Date.now() + ms }),
-  pushActivity: (items) =>
-    set((s) => ({ activity: [...items, ...s.activity].slice(0, 24) })),
+  recordCaptures: (captures) =>
+    set((s) => {
+      if (captures.length === 0) return s;
+      const activity = s.activity.slice();
+      for (const c of captures) {
+        const head = activity[0];
+        // Coalesce consecutive captures by the same user into one counting row.
+        if (head && head.ownerId === c.ownerId) {
+          activity[0] = { ...head, count: head.count + 1, name: c.name, color: c.color };
+        } else {
+          activity.unshift({ key: ++activitySeq, ownerId: c.ownerId, name: c.name, color: c.color, count: 1 });
+        }
+      }
+      return { activity: activity.slice(0, 24) };
+    }),
   clearActivity: () => set({ activity: [] }),
   pushToast: (kind, message) =>
     set((s) => {

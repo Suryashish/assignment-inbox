@@ -32,7 +32,8 @@ export function ActivityFeed() {
                     style={{ background: hex, boxShadow: `0 0 6px ${hex}` }}
                   />
                   <span className="truncate">
-                    <span className="text-[var(--text)]">{a.name}</span> captured a tile
+                    <span className="text-[var(--text)]">{a.name}</span> captured{' '}
+                    {a.count === 1 ? 'a tile' : `${a.count} tiles`}
                   </span>
                 </motion.li>
               );

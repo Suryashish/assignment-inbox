@@ -24,7 +24,7 @@ export function GlowButton({ children, onClick, type = 'button', disabled, class
       style={{
         background: 'linear-gradient(180deg, rgba(154,166,255,0.28), rgba(154,166,255,0.12))',
         border: '1px solid rgba(154,166,255,0.45)',
-        boxShadow: disabled ? 'none' : '0 0 28px -6px var(--accent), 0 1px 0 inset rgba(255,255,255,0.18)',
+        boxShadow: disabled ? 'none' : '0 0 14px -10px var(--accent), 0 1px 0 inset rgba(255,255,255,0.14)',
       }}
     >
       {children}

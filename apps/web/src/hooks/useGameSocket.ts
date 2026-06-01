@@ -5,9 +5,7 @@ import type { ClaimedTile } from '@ctb/shared';
 import { getSocket } from '@/lib/socket';
 import { rejoin } from '@/lib/actions';
 import { useGridStore } from '@/store/gridStore';
-import { useSessionStore, type ActivityItem } from '@/store/sessionStore';
-
-let activityKey = 0;
+import { useSessionStore, type Capture } from '@/store/sessionStore';
 
 /**
  * Wires the shared socket to the stores. Mounted once near the app root.
@@ -36,13 +34,13 @@ export function useGameSocket(): void {
       const batch = queue.splice(0, queue.length);
       grid().applyBatch(batch);
 
-      // Feed a lightweight activity stream (sampled so heavy bursts don't spam).
-      const items: ActivityItem[] = [];
-      for (const t of batch.slice(-6)) {
-        const u = session().resolveUser(t.owner);
-        items.push({ key: ++activityKey, name: u.name, color: t.color });
-      }
-      if (items.length) session().pushActivity(items);
+      // Feed the activity stream; the store coalesces same-user runs into one row.
+      const captures: Capture[] = batch.map((t) => ({
+        ownerId: t.owner,
+        name: session().resolveUser(t.owner).name,
+        color: t.color,
+      }));
+      session().recordCaptures(captures);
     };
     const onTiles = (batch: ClaimedTile[]) => {
       for (const t of batch) queue.push(t);

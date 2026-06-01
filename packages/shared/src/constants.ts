@@ -13,7 +13,7 @@ export const TILE_COUNT = GRID_COLS * GRID_ROWS;
 export const COOLDOWN_MS = 20;
 
 /** A freshly captured tile is shielded this long (ms). Set 0 for pure overwrite. */
-export const LOCK_MS = 2500;
+export const LOCK_MS = 1500;
 
 /** Server broadcast batch-flush interval (ms). ~16fps — decouples fan-out from claim rate. */
 export const TICK_MS = 60;
