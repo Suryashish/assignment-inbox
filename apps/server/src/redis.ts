@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { config } from './config';
-import { CLAIM_LUA } from './claimScript';
+import { CLAIM_LUA, CLAIM_MANY_LUA } from './claimScript';
 
 /** Namespaced Redis keys — one place so nothing drifts. */
 export const KEYS = {
@@ -8,6 +8,8 @@ export const KEYS = {
   lb: 'ctb:lb',
   seq: 'ctb:seq',
   users: 'ctb:users',
+  wins: 'ctb:wins', // userId -> round wins (persists across rounds)
+  power: 'ctb:power', // tileId -> power-up type
   channel: 'ctb:tile-changes',
   cd: (userId: string) => `ctb:cd:${userId}`,
   lock: (tileId: number) => `ctb:lock:${tileId}`,
@@ -34,6 +36,12 @@ interface CtbRedis extends Redis {
     cooldownMs: number,
     lockMs: number,
   ): Promise<ClaimRaw>;
+  claimMany(
+    gridKey: string,
+    lbKey: string,
+    seqKey: string,
+    ...args: (string | number)[]
+  ): Promise<(string | number)[]>;
 }
 
 const commonOpts = { maxRetriesPerRequest: null as null, enableReadyCheck: true };
@@ -44,8 +52,9 @@ export const redis = new Redis(config.redisUrl, commonOpts) as CtbRedis;
 /** A second connection dedicated to SUBSCRIBE (a subscribed conn can't issue normal commands). */
 export const subscriber = new Redis(config.redisUrl, commonOpts);
 
-// Register the atomic claim as a custom command (ioredis manages EVALSHA caching).
+// Register the atomic claim scripts (ioredis manages EVALSHA caching).
 redis.defineCommand('claimTile', { numberOfKeys: 5, lua: CLAIM_LUA });
+redis.defineCommand('claimMany', { numberOfKeys: 3, lua: CLAIM_MANY_LUA });
 
 export async function pingRedis(): Promise<boolean> {
   try {

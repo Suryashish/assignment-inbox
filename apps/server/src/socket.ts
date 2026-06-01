@@ -14,6 +14,9 @@ import {
 import { KEYS, redis } from './redis';
 import { claim, getSnapshot, registerUser, resetBoard } from './gameService';
 import { TokenBucket, isLoopback } from './rateLimit';
+import { getRound } from './roundManager';
+import { applyPowerup, clearPowerups, consumePowerupAt, getPowerups } from './powerups';
+import { recordCursor, removeCursor } from './broadcaster';
 import type { IO, IOSocket } from './ioTypes';
 
 const USERID_RE = /^[A-Za-z0-9_-]{6,40}$/;
@@ -58,11 +61,20 @@ export function registerSocketHandlers(io: IO): void {
         socket.data.color = color;
 
         await registerUser({ id: userId, name, color });
-        const snapshot = await getSnapshot(io.engine.clientsCount);
+        const snapshot = await getSnapshot(io.engine.clientsCount, getRound(), await getPowerups());
         ack({ userId, snapshot });
       } catch {
         ack({ userId: socket.data.userId ?? nanoid(), snapshot: emptySnapshot(io.engine.clientsCount) });
       }
+    });
+
+    socket.on('cursor', (payload) => {
+      const { userId, name, color } = socket.data;
+      if (!userId || !name || !color) return;
+      const x = Number(payload?.x);
+      const y = Number(payload?.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      recordCursor(socket.id, { id: userId, name, color, x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) });
     });
 
     socket.on('claim', async (payload, ack) => {
@@ -75,10 +87,16 @@ export function registerSocketHandlers(io: IO): void {
 
       try {
         const result = await claim(userId, payload.tileId, color);
-        ack(result);
         if (result.ok) {
+          // Did this claim land on a power-up tile? Grab it atomically.
+          const power = await consumePowerupAt(payload.tileId);
+          if (power) result.power = power;
+          ack(result);
           // Publish the delta; the broadcaster batches it to everyone next tick.
           await redis.publish(KEYS.channel, JSON.stringify(result.tile));
+          if (power) await applyPowerup(io, userId, color, payload.tileId, power);
+        } else {
+          ack(result);
         }
       } catch {
         ack({ ok: false, reason: 'invalid' });
@@ -89,6 +107,7 @@ export function registerSocketHandlers(io: IO): void {
       if (!socket.data.userId) return; // must have joined
       try {
         await resetBoard();
+        await clearPowerups(io);
         io.emit(EVENTS.boardReset);
         io.emit(EVENTS.leaderboardUpdate, []);
       } catch {
@@ -98,6 +117,7 @@ export function registerSocketHandlers(io: IO): void {
 
     socket.on('disconnect', () => {
       buckets.delete(socket.id);
+      removeCursor(socket.id);
       if (!isLoopback(ip)) {
         const count = (ipConnections.get(ip) ?? 1) - 1;
         if (count <= 0) ipConnections.delete(ip);
@@ -125,5 +145,7 @@ function emptySnapshot(online: number): Snapshot {
     online,
     leaderboard: [],
     seq: 0,
+    round: getRound(),
+    powerups: [],
   };
 }

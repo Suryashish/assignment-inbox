@@ -107,6 +107,18 @@ LOADTEST_CLIENTS=200 LOADTEST_DURATION=12000 pnpm --filter @ctb/server loadtest
 | Monorepo | pnpm workspaces + a shared **typed contract** | Client and server share event/types/constants — no drift. |
 
 ### Game rules & features
+- **Timed rounds** — each round runs `ROUND_MS` (default 2 min, env-overridable)
+  with a live synced countdown; at the end the leader is crowned with a
+  celebration banner + confetti, the board auto-resets, and the next round
+  begins. Round wins persist per player.
+- **Power-up tiles** — special tiles spawn/despawn over time; grabbing one fires
+  an effect: 💣 bomb (claims a 3×3 area), 🌟 burst (a plus), 🛡️ shield
+  (claims + extends the lock on a cluster).
+- **Live cursors** — every player's cursor (name + color) is relayed in board
+  space, so the board feels like a crowded arena.
+- **Combo + juice** — rapid captures build a combo multiplier with escalating
+  feedback; synthesized Web-Audio sound effects (no assets) + mobile haptics on
+  capture/grab/win, with a mute toggle.
 - **Overwrite + cooldown** — capture any tile; a short, configurable cooldown
   between captures (rate limit + natural load governor).
 - **Lock / shield** — a freshly captured tile is briefly protected from others

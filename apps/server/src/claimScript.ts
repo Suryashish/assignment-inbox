@@ -73,3 +73,40 @@ end
 
 return {1, s}
 `;
+
+/**
+ * Claim a LIST of tiles for one user at once (used by power-up effects). No
+ * cooldown/lock checks — it's a bonus. Atomic, keeps the leaderboard consistent.
+ *
+ * KEYS[1] grid   KEYS[2] leaderboard   KEYS[3] seq
+ * ARGV[1] userId   ARGV[2] color   ARGV[3..] tileIds
+ * Returns a flat list: {tileId, seq, tileId, seq, ...}
+ */
+export const CLAIM_MANY_LUA = `
+local grid = KEYS[1]
+local lb   = KEYS[2]
+local userId = ARGV[1]
+local color  = ARGV[2]
+local out = {}
+for i = 3, #ARGV do
+  local tileId = ARGV[i]
+  local prevOwner = false
+  local prevRaw = redis.call('HGET', grid, tileId)
+  if prevRaw then
+    local ok, d = pcall(cjson.decode, prevRaw)
+    if ok and d and d.owner then prevOwner = d.owner end
+  end
+  local s = redis.call('INCR', KEYS[3])
+  redis.call('HSET', grid, tileId, cjson.encode({owner = userId, color = color, seq = s}))
+  if prevOwner ~= userId then
+    if prevOwner then
+      local ns = redis.call('ZINCRBY', lb, -1, prevOwner)
+      if tonumber(ns) <= 0 then redis.call('ZREM', lb, prevOwner) end
+    end
+    redis.call('ZINCRBY', lb, 1, userId)
+  end
+  out[#out + 1] = tileId
+  out[#out + 1] = s
+end
+return out
+`;

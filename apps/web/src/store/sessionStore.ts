@@ -4,12 +4,23 @@ import {
   GRID_COLS,
   GRID_ROWS,
   LOCK_MS,
+  ROUND_MS,
+  type CursorInfo,
   type LeaderboardEntry,
+  type RoundResult,
+  type RoundState,
   type Snapshot,
   type User,
 } from '@ctb/shared';
 
 const STORAGE_KEY = 'ctb:identity';
+const MUTE_KEY = 'ctb:muted';
+const COMBO_WINDOW_MS = 1500;
+
+function loadMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(MUTE_KEY) === '1';
+}
 
 export function loadIdentity(): User | null {
   if (typeof window === 'undefined') return null;
@@ -62,6 +73,19 @@ interface SessionState {
   toasts: ToastItem[];
   namesById: Record<string, { name: string; color: string }>;
 
+  // round / match
+  round: { id: number; durationMs: number };
+  roundEndsAt: number; // local epoch ms
+  roundResult: RoundResult | null;
+
+  // live cursors of other players
+  cursors: CursorInfo[];
+
+  // combo + sound
+  combo: number;
+  comboExpiresAt: number;
+  muted: boolean;
+
   setMe: (user: User) => void;
   setJoined: (v: boolean) => void;
   setConnection: (c: ConnectionState) => void;
@@ -74,6 +98,11 @@ interface SessionState {
   pushToast: (kind: ToastKind, message: string) => void;
   removeToast: (id: number) => void;
   resolveUser: (id: string) => { name: string; color: string };
+  setRound: (r: RoundState) => void;
+  setRoundResult: (r: RoundResult | null) => void;
+  setCursors: (c: CursorInfo[]) => void;
+  bumpCombo: () => number;
+  toggleMuted: () => void;
 }
 
 let toastSeq = 0;
@@ -90,6 +119,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   activity: [],
   toasts: [],
   namesById: {},
+  round: { id: 0, durationMs: ROUND_MS },
+  roundEndsAt: 0,
+  roundResult: null,
+  cursors: [],
+  combo: 0,
+  comboExpiresAt: 0,
+  muted: loadMuted(),
 
   setMe: (user) => {
     saveIdentity(user);
@@ -138,4 +174,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (known) return known;
     return { name: 'a player', color: 'periwinkle' };
   },
+  setRound: (r) => set({ round: { id: r.id, durationMs: r.durationMs }, roundEndsAt: Date.now() + r.remainingMs }),
+  setRoundResult: (roundResult) => set({ roundResult }),
+  setCursors: (cursors) => set({ cursors }),
+  bumpCombo: () => {
+    const now = Date.now();
+    const s = get();
+    const combo = now < s.comboExpiresAt ? s.combo + 1 : 1;
+    set({ combo, comboExpiresAt: now + COMBO_WINDOW_MS });
+    return combo;
+  },
+  toggleMuted: () =>
+    set((s) => {
+      const muted = !s.muted;
+      try {
+        window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return { muted };
+    }),
 }));

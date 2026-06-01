@@ -8,6 +8,8 @@ import {
   type ClaimedTile,
   type ClaimResult,
   type LeaderboardEntry,
+  type PowerUp,
+  type RoundState,
   type Snapshot,
   type User,
 } from '@ctb/shared';
@@ -180,7 +182,11 @@ export async function resetBoard(): Promise<void> {
 }
 
 /** Full state for a joining (or reconnecting) client. */
-export async function getSnapshot(online: number): Promise<Snapshot> {
+export async function getSnapshot(
+  online: number,
+  round: RoundState,
+  powerups: PowerUp[],
+): Promise<Snapshot> {
   const tiles = await getTiles();
   const [leaderboard, seq] = await Promise.all([computeLeaderboard(tiles), getSeq()]);
   return {
@@ -189,5 +195,7 @@ export async function getSnapshot(online: number): Promise<Snapshot> {
     online,
     leaderboard,
     seq,
+    round,
+    powerups,
   };
 }

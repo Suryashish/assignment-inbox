@@ -1,5 +1,6 @@
 import { COOLDOWN_MS, type JoinResult } from '@ctb/shared';
 import { getSocket } from './socket';
+import { sfx } from './sfx';
 import { useGridStore } from '@/store/gridStore';
 import { useSessionStore } from '@/store/sessionStore';
 
@@ -15,8 +16,18 @@ export function applyJoinResult(res: JoinResult, name?: string, color?: string):
   session.setConfig(res.snapshot.config);
   session.setOnline(res.snapshot.online);
   session.setLeaderboard(res.snapshot.leaderboard);
-  useGridStore.getState().applySnapshot(res.snapshot.tiles);
+  session.setRound(res.snapshot.round);
+  useGridStore.getState().applySnapshot(res.snapshot.tiles, res.snapshot.powerups);
   session.setJoined(true);
+}
+
+/** Throttled cursor broadcast (board-space 0..1 coords). */
+let lastCursorAt = 0;
+export function sendCursor(x: number, y: number): void {
+  const now = Date.now();
+  if (now - lastCursorAt < 70) return;
+  lastCursorAt = now;
+  getSocket().emit('cursor', { x, y });
 }
 
 /** Enter the board with a chosen name + color (reuses saved userId if present). */
@@ -50,17 +61,35 @@ export function attemptClaim(tileId: number): void {
   if (!me) return;
   if (Date.now() < session.cooldownUntil) return; // client-side guard; server re-checks
 
+  // Already yours? Re-claiming is a no-op — don't spam the server, combo, or feed.
+  if (grid.tiles.get(tileId)?.owner === me.id || grid.optimistic.get(tileId)?.owner === me.id) return;
+
   grid.setOptimistic(tileId, me.id, me.color);
 
   getSocket().emit('claim', { tileId }, (res) => {
-    grid.clearOptimistic(tileId);
     if (res.ok) {
-      grid.applyTile(res.tile);
+      // Keep the optimistic paint until the authoritative broadcast applies the
+      // tile and clears it. The broadcast is the single source that drives the
+      // activity feed (owner-change diff), so our own captures show up there too.
       session.startCooldown(COOLDOWN_MS);
-    } else if (res.reason === 'cooldown') {
-      session.startCooldown(res.remainingMs);
-    } else if (res.reason === 'locked') {
-      session.pushToast('warn', 'That tile is freshly shielded — try again in a moment.');
+      const combo = session.bumpCombo();
+      if (res.power) {
+        sfx.power();
+        navigator.vibrate?.([12, 30, 18]);
+        session.pushToast('info', `${powerLabel(res.power)} grabbed!`);
+      } else {
+        sfx.capture(combo);
+        navigator.vibrate?.(10);
+      }
+    } else {
+      grid.clearOptimistic(tileId); // revert the optimistic paint
+      if (res.reason === 'cooldown') session.startCooldown(res.remainingMs);
+      else if (res.reason === 'locked')
+        session.pushToast('warn', 'That tile is freshly shielded — try again in a moment.');
     }
   });
+}
+
+function powerLabel(p: 'bomb' | 'burst' | 'shield'): string {
+  return p === 'bomb' ? '💣 Bomb' : p === 'burst' ? '🌟 Burst' : '🛡️ Shield';
 }

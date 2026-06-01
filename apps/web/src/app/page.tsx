@@ -10,6 +10,8 @@ import { Leaderboard } from '@/components/hud/Leaderboard';
 import { ActivityFeed } from '@/components/hud/ActivityFeed';
 import { CooldownIndicator } from '@/components/hud/CooldownIndicator';
 import { MobileStats } from '@/components/hud/MobileStats';
+import { ComboMeter } from '@/components/hud/ComboMeter';
+import { RoundResultBanner } from '@/components/hud/RoundResultBanner';
 import { Toaster } from '@/components/ui/Toaster';
 
 export default function Home() {
@@ -27,12 +29,14 @@ export default function Home() {
           <motion.div key="board" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
             <Board />
             <TopBar />
+            <ComboMeter />
             <aside className="fixed bottom-6 right-4 top-20 z-30 hidden w-72 flex-col gap-3 lg:flex">
               <Leaderboard />
               <ActivityFeed />
             </aside>
             <MobileStats />
             <CooldownIndicator />
+            <RoundResultBanner />
           </motion.div>
         )}
       </AnimatePresence>

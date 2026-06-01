@@ -6,6 +6,8 @@ import { config } from './config';
 import { pingRedis, closeRedis } from './redis';
 import { registerSocketHandlers } from './socket';
 import { startBroadcaster } from './broadcaster';
+import { startRounds } from './roundManager';
+import { startPowerups } from './powerups';
 import type { SocketData } from './ioTypes';
 
 const app = express();
@@ -27,6 +29,8 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string,
 
 registerSocketHandlers(io);
 const stopBroadcaster = startBroadcaster(io);
+const stopRounds = startRounds(io);
+const stopPowerups = startPowerups(io);
 
 httpServer.listen(config.port, () => {
   console.log(`[ctb] server listening on :${config.port} (redis: ${config.redisUrl})`);
@@ -38,6 +42,8 @@ async function shutdown(signal: string) {
   shuttingDown = true;
   console.log(`[ctb] ${signal} received, shutting down…`);
   stopBroadcaster();
+  stopRounds();
+  stopPowerups();
   await new Promise<void>((resolve) => io.close(() => resolve()));
   await closeRedis();
   process.exit(0);

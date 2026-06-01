@@ -7,6 +7,8 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: false, // realtime socket app — avoid dev double-connect churn
   transpilePackages: ['@ctb/shared'],
+  // Hide the dev-tools indicator (it overlaps the bottom-left board controls).
+  devIndicators: false,
   // Standalone output is only needed for the slim Docker image. It uses symlinks
   // that Windows hosts block, so we gate it behind a flag the Dockerfile sets.
   output: process.env.BUILD_STANDALONE ? 'standalone' : undefined,

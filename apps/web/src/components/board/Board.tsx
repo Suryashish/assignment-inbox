@@ -1,11 +1,16 @@
 'use client';
 
-import { useMemo, type CSSProperties } from 'react';
+import { useMemo, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { GRID_COLS, TILE_COUNT } from '@ctb/shared';
+import { BOARD_H, BOARD_W, GRID_COLS, TILE_GAP_PX, TILE_PX, TILE_COUNT } from '@ctb/shared';
 import { Tile } from './Tile';
+import { PowerupLayer } from './PowerupLayer';
+import { CursorLayer } from './CursorLayer';
+import { sendCursor } from '@/lib/actions';
+import { setMuted } from '@/lib/sfx';
+import { useSessionStore } from '@/store/sessionStore';
 
-function ZoomButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function ControlButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       aria-label={label}
@@ -19,12 +24,29 @@ function ZoomButton({ label, onClick, children }: { label: string; onClick: () =
 
 export function Board() {
   const ids = useMemo(() => Array.from({ length: TILE_COUNT }, (_, i) => i), []);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const muted = useSessionStore((s) => s.muted);
+  const toggleMuted = useSessionStore((s) => s.toggleMuted);
 
   const gridStyle: CSSProperties = {
     display: 'grid',
-    gridTemplateColumns: `repeat(${GRID_COLS}, 20px)`,
-    gridAutoRows: '20px',
-    gap: '2px',
+    gridTemplateColumns: `repeat(${GRID_COLS}, ${TILE_PX}px)`,
+    gridAutoRows: `${TILE_PX}px`,
+    gap: `${TILE_GAP_PX}px`,
+  };
+
+  // Broadcast pointer position as a board-space fraction (rect reflects zoom/pan).
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const el = gridRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    sendCursor((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+  };
+
+  const onToggleMute = () => {
+    toggleMuted();
+    setMuted(!muted);
   };
 
   return (
@@ -43,8 +65,6 @@ export function Board() {
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
-            {/* Content fills the wrapper and flex-centers the grid, so the board
-                stays centered + visible regardless of init measurement timing. */}
             <TransformComponent
               wrapperStyle={{ width: '100%', height: '100%', cursor: 'grab' }}
               contentStyle={{
@@ -63,18 +83,31 @@ export function Board() {
                     'inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.4), 0 50px 130px -55px #000',
                 }}
               >
-                <div style={gridStyle}>
-                  {ids.map((i) => (
-                    <Tile key={i} id={i} />
-                  ))}
+                {/* wrapper sized to the EXACT grid box so overlays (power-ups, cursors) align */}
+                <div
+                  ref={gridRef}
+                  className="relative"
+                  style={{ width: BOARD_W, height: BOARD_H }}
+                  onPointerMove={onPointerMove}
+                >
+                  <div style={gridStyle}>
+                    {ids.map((i) => (
+                      <Tile key={i} id={i} />
+                    ))}
+                  </div>
+                  <PowerupLayer />
+                  <CursorLayer />
                 </div>
               </div>
             </TransformComponent>
 
             <div className="absolute bottom-6 left-4 z-30 flex flex-col gap-2">
-              <ZoomButton label="Zoom in" onClick={() => zoomIn()}>+</ZoomButton>
-              <ZoomButton label="Zoom out" onClick={() => zoomOut()}>−</ZoomButton>
-              <ZoomButton label="Reset view" onClick={() => resetTransform()}>⤾</ZoomButton>
+              <ControlButton label="Zoom in" onClick={() => zoomIn()}>+</ControlButton>
+              <ControlButton label="Zoom out" onClick={() => zoomOut()}>−</ControlButton>
+              <ControlButton label="Reset view" onClick={() => resetTransform()}>⤾</ControlButton>
+              <ControlButton label={muted ? 'Unmute' : 'Mute'} onClick={onToggleMute}>
+                {muted ? '🔇' : '🔊'}
+              </ControlButton>
             </div>
           </>
         )}

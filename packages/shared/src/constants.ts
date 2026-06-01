@@ -9,6 +9,13 @@ export const GRID_COLS = 32;
 export const GRID_ROWS = 32;
 export const TILE_COUNT = GRID_COLS * GRID_ROWS;
 
+/** Tile render geometry — shared so the grid and its overlays align exactly. */
+export const TILE_PX = 20;
+export const TILE_GAP_PX = 2;
+export const TILE_PITCH_PX = TILE_PX + TILE_GAP_PX;
+export const BOARD_W = GRID_COLS * TILE_PX + (GRID_COLS - 1) * TILE_GAP_PX;
+export const BOARD_H = GRID_ROWS * TILE_PX + (GRID_ROWS - 1) * TILE_GAP_PX;
+
 /** Per-user rate limit between captures (ms). Also the natural load governor. */
 export const COOLDOWN_MS = 20;
 
@@ -20,6 +27,16 @@ export const TICK_MS = 60;
 
 /** How many leaderboard rows the server sends / the client shows. */
 export const LEADERBOARD_SIZE = 8;
+
+/** Round length (ms). The server may override via the ROUND_MS env var. */
+export const ROUND_MS = 120_000;
+/** Pause between rounds for the winner celebration (ms). */
+export const ROUND_INTERMISSION_MS = 4500;
+
+/** Power-up spawning. */
+export const POWERUP_SPAWN_MS = 11_000; // try to spawn one this often
+export const POWERUP_TTL_MS = 16_000; // despawns if not grabbed
+export const MAX_POWERUPS = 3; // max live on the board at once
 
 /**
  * Curated pastel palette — desaturated and mutually harmonious so the board

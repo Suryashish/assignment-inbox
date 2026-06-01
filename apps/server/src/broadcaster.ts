@@ -1,20 +1,26 @@
-import { EVENTS, TICK_MS, type ClaimedTile } from '@ctb/shared';
+import { EVENTS, TICK_MS, type ClaimedTile, type CursorInfo } from '@ctb/shared';
 import { KEYS, subscriber } from './redis';
 import { computeLeaderboard } from './gameService';
 import type { IO } from './ioTypes';
 
 /** Leaderboard is expensive-ish (HGETALL + flood-fill); recompute at most this often. */
 const LEADERBOARD_INTERVAL_MS = 700;
+/** Drop a cursor if we haven't heard from it in this long. */
+const CURSOR_STALE_MS = 1600;
+
+// Live cursors, keyed by socket id. Updated by socket handlers, flushed per tick.
+const cursors = new Map<string, CursorInfo & { ts: number }>();
+export function recordCursor(socketId: string, info: CursorInfo): void {
+  cursors.set(socketId, { ...info, ts: Date.now() });
+}
+export function removeCursor(socketId: string): void {
+  cursors.delete(socketId);
+}
 
 /**
- * Turns the claim firehose into a steady, bounded stream of updates.
- *
- * Every claim publishes a delta to a Redis channel; we coalesce all deltas that
- * arrive within a TICK and emit ONE `tiles:update` batch per tick. So each
- * client receives ~`1000/TICK_MS` messages/sec no matter how many users are
- * active — fan-out is O(users), not O(users²). Routing deltas through Redis
- * pub/sub (rather than emitting inline) is also what lets this scale to N
- * instances unchanged: each instance batches for its own sockets.
+ * Turns the claim + cursor firehose into a steady, bounded stream of updates.
+ * One coalesced `tiles:update` and one `cursors:update` per tick → fan-out is
+ * O(users), not O(users²), no matter how fast people paint or move.
  */
 export function startBroadcaster(io: IO): () => void {
   const buffer = new Map<number, ClaimedTile>();
@@ -35,10 +41,20 @@ export function startBroadcaster(io: IO): () => void {
   void subscriber.subscribe(KEYS.channel);
 
   const tick = setInterval(() => {
-    if (buffer.size === 0) return;
-    const batch = Array.from(buffer.values());
-    buffer.clear();
-    io.emit(EVENTS.tilesUpdate, batch);
+    if (buffer.size > 0) {
+      const batch = Array.from(buffer.values());
+      buffer.clear();
+      io.emit(EVENTS.tilesUpdate, batch);
+    }
+
+    // Cursors: emit the fresh ones, prune the stale.
+    const now = Date.now();
+    const live: CursorInfo[] = [];
+    for (const [id, c] of cursors) {
+      if (now - c.ts > CURSOR_STALE_MS) cursors.delete(id);
+      else live.push({ id: c.id, name: c.name, color: c.color, x: c.x, y: c.y });
+    }
+    io.emit(EVENTS.cursorsUpdate, live);
   }, TICK_MS);
 
   const lbTimer = setInterval(() => {

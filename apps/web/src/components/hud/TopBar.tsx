@@ -5,6 +5,7 @@ import { colorHex } from '@ctb/shared';
 import { useSessionStore } from '@/store/sessionStore';
 import { useMyTileCount } from '@/hooks/useMyTileCount';
 import { resetGame } from '@/lib/actions';
+import { RoundTimer } from './RoundTimer';
 
 export function TopBar() {
   const me = useSessionStore((s) => s.me);
@@ -39,21 +40,24 @@ export function TopBar() {
         </span>
       </div>
 
-      <div className="glass flex items-center gap-2 rounded-full px-3 py-1.5 sm:px-4 sm:py-2">
-        <span
-          className="dot-pulse h-2 w-2 rounded-full"
-          style={{ color: connected ? '#8fe3c4' : '#ff9a9a', background: connected ? '#8fe3c4' : '#ff9a9a' }}
-        />
-        <span className="mono text-xs text-[var(--text-dim)]">
-          {connected ? (
-            <>
-              {online}
-              <span className="hidden sm:inline"> online</span>
-            </>
-          ) : (
-            'offline'
-          )}
-        </span>
+      <div className="flex items-center gap-2">
+        <div className="glass flex items-center gap-2 rounded-full px-3 py-1.5 sm:px-4 sm:py-2">
+          <span
+            className="dot-pulse h-2 w-2 rounded-full"
+            style={{ color: connected ? '#8fe3c4' : '#ff9a9a', background: connected ? '#8fe3c4' : '#ff9a9a' }}
+          />
+          <span className="mono text-xs text-[var(--text-dim)]">
+            {connected ? (
+              <>
+                {online}
+                <span className="hidden sm:inline"> online</span>
+              </>
+            ) : (
+              'offline'
+            )}
+          </span>
+        </div>
+        <RoundTimer />
       </div>
 
       <div className="flex min-w-0 items-center gap-2">

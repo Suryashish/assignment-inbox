@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import type { ClaimedTile } from '@ctb/shared';
 import { getSocket } from '@/lib/socket';
 import { rejoin } from '@/lib/actions';
+import { sfx, setMuted } from '@/lib/sfx';
 import { useGridStore } from '@/store/gridStore';
 import { useSessionStore, type Capture } from '@/store/sessionStore';
 
@@ -32,15 +33,21 @@ export function useGameSocket(): void {
       raf = 0;
       if (queue.length === 0) return;
       const batch = queue.splice(0, queue.length);
-      grid().applyBatch(batch);
 
-      // Feed the activity stream; the store coalesces same-user runs into one row.
-      const captures: Capture[] = batch.map((t) => ({
-        ownerId: t.owner,
-        name: session().resolveUser(t.owner).name,
-        color: t.color,
-      }));
-      session().recordCaptures(captures);
+      // Only count a capture when a tile's OWNER actually changes (a real gain) —
+      // not self-overwrites / power-up re-claims of tiles already owned. Read the
+      // pre-batch state before applying.
+      const before = grid().tiles;
+      const captures: Capture[] = [];
+      for (const t of batch) {
+        const cur = before.get(t.id);
+        if (t.seq > (cur?.seq ?? 0) && cur?.owner !== t.owner) {
+          captures.push({ ownerId: t.owner, name: session().resolveUser(t.owner).name, color: t.color });
+        }
+      }
+
+      grid().applyBatch(batch);
+      if (captures.length) session().recordCaptures(captures);
     };
     const onTiles = (batch: ClaimedTile[]) => {
       for (const t of batch) queue.push(t);
@@ -56,10 +63,22 @@ export function useGameSocket(): void {
       grid().applySnapshot([]);
       session().setLeaderboard([]);
       session().clearActivity();
-      session().pushToast('info', 'A fresh game started — board cleared.');
+      session().setCursors([]);
     };
     socket.on('board:reset', onReset);
 
+    socket.on('round:state', (round) => session().setRound(round));
+    socket.on('round:end', (result) => {
+      session().setRoundResult(result);
+      sfx.win();
+      // Auto-clear the celebration shortly before the next round begins.
+      setTimeout(() => session().setRoundResult(null), 3800);
+    });
+    socket.on('cursors:update', (cursors) => session().setCursors(cursors));
+    socket.on('power:spawn', (p) => grid().addPowerup(p));
+    socket.on('power:despawn', ({ tileId }) => grid().removePowerup(tileId));
+
+    setMuted(session().muted);
     if (socket.connected) onConnect();
 
     return () => {
@@ -69,6 +88,11 @@ export function useGameSocket(): void {
       socket.off('leaderboard:update');
       socket.off('presence:update');
       socket.off('board:reset', onReset);
+      socket.off('round:state');
+      socket.off('round:end');
+      socket.off('cursors:update');
+      socket.off('power:spawn');
+      socket.off('power:despawn');
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);

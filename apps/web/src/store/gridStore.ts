@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ClaimedTile } from '@ctb/shared';
+import type { ClaimedTile, PowerUp, PowerUpType } from '@ctb/shared';
 
 interface Optimistic {
   owner: string;
@@ -12,23 +12,30 @@ interface GridState {
   tiles: Map<number, ClaimedTile>;
   /** My in-flight clicks, painted instantly and reconciled on ack/broadcast. */
   optimistic: Map<number, Optimistic>;
+  /** Live power-up tiles (tileId -> type), rendered as an overlay. */
+  powerups: Map<number, PowerUpType>;
 
-  applySnapshot: (tiles: ClaimedTile[]) => void;
+  applySnapshot: (tiles: ClaimedTile[], powerups?: PowerUp[]) => void;
   applyBatch: (tiles: ClaimedTile[]) => void;
   applyTile: (tile: ClaimedTile) => void;
   setOptimistic: (id: number, owner: string, color: string) => void;
   clearOptimistic: (id: number) => void;
+  addPowerup: (p: PowerUp) => void;
+  removePowerup: (tileId: number) => void;
 }
 
 export const useGridStore = create<GridState>((set) => ({
   tiles: new Map(),
   optimistic: new Map(),
+  powerups: new Map(),
 
-  applySnapshot: (incoming) =>
+  applySnapshot: (incoming, powerups = []) =>
     set(() => {
       const tiles = new Map<number, ClaimedTile>();
       for (const t of incoming) tiles.set(t.id, t);
-      return { tiles, optimistic: new Map() };
+      const pu = new Map<number, PowerUpType>();
+      for (const p of powerups) pu.set(p.tileId, p.type);
+      return { tiles, optimistic: new Map(), powerups: pu };
     }),
 
   applyBatch: (incoming) =>
@@ -76,5 +83,20 @@ export const useGridStore = create<GridState>((set) => ({
       const optimistic = new Map(s.optimistic);
       optimistic.delete(id);
       return { optimistic };
+    }),
+
+  addPowerup: (p) =>
+    set((s) => {
+      const powerups = new Map(s.powerups);
+      powerups.set(p.tileId, p.type);
+      return { powerups };
+    }),
+
+  removePowerup: (tileId) =>
+    set((s) => {
+      if (!s.powerups.has(tileId)) return {};
+      const powerups = new Map(s.powerups);
+      powerups.delete(tileId);
+      return { powerups };
     }),
 }));
