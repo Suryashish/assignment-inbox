@@ -113,8 +113,11 @@ LOADTEST_CLIENTS=200 LOADTEST_DURATION=12000 pnpm --filter @ctb/server loadtest
   (configurable; `0` = pure overwrite).
 - **New game** — the **New game** button clears the shared board for everyone and
   starts fresh (server wipes grid/leaderboard, broadcasts `board:reset`).
-- **Leaderboard + stats** — tiles owned, **largest contiguous cluster** (area
-  control, via flood-fill), live online count, your tile count.
+- **Standings panel** — ranked leaderboard (👑 leader, tiles owned, **largest
+  contiguous cluster** via flood-fill, per-player share bars), a **board-control
+  bar** (each color's share of the board), and live stats: **% claimed, player
+  count, online count, and your rank** (computed live from the full board, with a
+  "your standing" row when you're outside the top list).
 - **Zoom / pan**, capture ripples, hover glow, cooldown ring, live activity feed,
   animated join → board transition.
 

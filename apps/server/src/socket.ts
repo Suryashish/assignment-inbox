@@ -15,8 +15,12 @@ import { KEYS, redis } from './redis';
 import { claim, getSnapshot, registerUser, resetBoard } from './gameService';
 import type { IO, IOSocket } from './ioTypes';
 
-/** Per-socket flood guard. Cheap defense; the Lua cooldown is the real authority. */
-const CLAIM_MIN_INTERVAL_MS = 180;
+/**
+ * Per-socket flood guard. Cheap defense against abusive bursts; the Lua cooldown
+ * is the real rate limit. Kept well below the cooldown so it never rejects
+ * legitimate fast play (which should hit the proper 'cooldown' path instead).
+ */
+const CLAIM_MIN_INTERVAL_MS = Math.min(40, Math.floor(COOLDOWN_MS / 2));
 const USERID_RE = /^[A-Za-z0-9_-]{6,40}$/;
 
 export function registerSocketHandlers(io: IO): void {

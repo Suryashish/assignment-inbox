@@ -18,7 +18,9 @@ export function ColorSwatch({ color, selected, onSelect }: Props) {
       aria-pressed={selected}
       whileHover={{ scale: 1.12 }}
       whileTap={{ scale: 0.92 }}
-      className="relative h-9 w-9 rounded-lg"
+      animate={{ scale: selected ? 1.06 : 1 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      className="relative grid h-9 w-9 place-items-center rounded-lg"
       style={{
         background: color.hex,
         boxShadow: selected
@@ -26,13 +28,7 @@ export function ColorSwatch({ color, selected, onSelect }: Props) {
           : `0 0 10px -4px ${color.hex}`,
       }}
     >
-      {selected && (
-        <motion.span
-          layoutId="swatch-ring"
-          className="absolute inset-0 rounded-lg"
-          transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-        />
-      )}
+      {selected && <span className="text-sm font-bold leading-none text-black/70">✓</span>}
     </motion.button>
   );
 }

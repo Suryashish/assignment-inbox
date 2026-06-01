@@ -8,16 +8,20 @@ import { ColorSwatch } from '@/components/ui/ColorSwatch';
 import { joinGame } from '@/lib/actions';
 import { useSessionStore } from '@/store/sessionStore';
 
+const SUGGESTIONS = ['nova', 'echo', 'pixel', 'comet', 'lynx', 'zephyr', 'orbit', 'mako', 'flux', 'wren'];
+const randomName = () => SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)]!;
+
 export function JoinScreen() {
   const me = useSessionStore((s) => s.me);
   const connection = useSessionStore((s) => s.connection);
-  const [name, setName] = useState(me?.name ?? '');
+  // Pre-fill a suggested name so the field is never empty and Enter is never stuck.
+  const [name, setName] = useState(() => me?.name ?? randomName());
   const [color, setColor] = useState(me?.color ?? PALETTE[0]!.id);
 
-  const ready = isValidName(name);
+  // Always allow entering — fall back to a generated name if the field is blank.
   const submit = () => {
-    if (!ready) return;
-    joinGame(sanitizeName(name), color);
+    const finalName = isValidName(name) ? sanitizeName(name) : randomName();
+    joinGame(finalName, color);
   };
 
   return (
@@ -56,7 +60,7 @@ export function JoinScreen() {
           ))}
         </div>
 
-        <GlowButton onClick={submit} disabled={!ready} className="w-full">
+        <GlowButton onClick={submit} className="w-full">
           Enter the board
         </GlowButton>
 
