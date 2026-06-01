@@ -1,6 +1,7 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { useEffect } from 'react';
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 
 /** Soft aurora orbs for atmospheric depth. */
 const ORBS = [
@@ -29,6 +30,23 @@ const TILES = [
 export function JoinBackdrop() {
   const reduce = useReducedMotion();
 
+  // Pointer position as -0.5..0.5 from screen center, smoothed by a spring so
+  // the parallax glides. Depth is derived per-layer from each tile's size.
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const sx = useSpring(mx, { stiffness: 60, damping: 20 });
+  const sy = useSpring(my, { stiffness: 60, damping: 20 });
+
+  useEffect(() => {
+    if (reduce) return;
+    const onMove = (e: PointerEvent) => {
+      mx.set(e.clientX / window.innerWidth - 0.5);
+      my.set(e.clientY / window.innerHeight - 0.5);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [mx, my, reduce]);
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {ORBS.map((o, i) => (
@@ -49,22 +67,7 @@ export function JoinBackdrop() {
       ))}
 
       {TILES.map((t, i) => (
-        <motion.div
-          key={`tile-${i}`}
-          className="absolute rounded-[7px]"
-          style={{
-            top: t.top,
-            left: t.left,
-            width: t.size,
-            height: t.size,
-            background: t.c,
-            opacity: t.op,
-            filter: t.blur ? `blur(${t.blur}px)` : undefined,
-            boxShadow: `0 0 26px -6px ${t.c}`,
-          }}
-          animate={reduce ? undefined : { y: [0, -t.drift, 0], rotate: [t.rot, t.rot + 7, t.rot] }}
-          transition={{ duration: t.dur, repeat: Infinity, ease: 'easeInOut', delay: t.delay }}
-        />
+        <ParallaxTile key={`tile-${i}`} t={t} sx={sx} sy={sy} reduce={!!reduce} />
       ))}
 
       {/* Darken the center a touch so the glass card stays crisp + readable. */}
@@ -73,5 +76,45 @@ export function JoinBackdrop() {
         style={{ background: 'radial-gradient(46% 40% at 50% 50%, rgba(8,8,10,0.55), transparent 72%)' }}
       />
     </div>
+  );
+}
+
+type TileDef = (typeof TILES)[number];
+
+/** A single floating tile with size-derived pointer parallax layered on top of
+ *  its idle drift. Bigger tiles read as nearer, so they shift more. */
+function ParallaxTile({
+  t,
+  sx,
+  sy,
+  reduce,
+}: {
+  t: TileDef;
+  sx: ReturnType<typeof useSpring>;
+  sy: ReturnType<typeof useSpring>;
+  reduce: boolean;
+}) {
+  // Map size 22..64 → depth 0.4..1, then to a px shift range.
+  const depth = (t.size - 22) / 42; // 0..1
+  const shift = 14 + depth * 34; // 14..48px at the screen edge
+  const px = useTransform(sx, (v) => v * shift);
+  const py = useTransform(sy, (v) => v * shift);
+
+  return (
+    <motion.div className="absolute" style={{ top: t.top, left: t.left, x: px, y: py }}>
+      <motion.div
+        className="rounded-[7px]"
+        style={{
+          width: t.size,
+          height: t.size,
+          background: t.c,
+          opacity: t.op,
+          filter: t.blur ? `blur(${t.blur}px)` : undefined,
+          boxShadow: `0 0 26px -6px ${t.c}`,
+        }}
+        animate={reduce ? undefined : { y: [0, -t.drift, 0], rotate: [t.rot, t.rot + 7, t.rot] }}
+        transition={{ duration: t.dur, repeat: Infinity, ease: 'easeInOut', delay: t.delay }}
+      />
+    </motion.div>
   );
 }

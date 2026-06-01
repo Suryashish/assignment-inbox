@@ -5,6 +5,7 @@ import { useGameSocket } from '@/hooks/useGameSocket';
 import { useSessionStore } from '@/store/sessionStore';
 import { JoinScreen } from '@/components/join/JoinScreen';
 import { Board } from '@/components/board/Board';
+import { ParallaxBackdrop } from '@/components/board/ParallaxBackdrop';
 import { TopBar } from '@/components/hud/TopBar';
 import { Leaderboard } from '@/components/hud/Leaderboard';
 import { ActivityFeed } from '@/components/hud/ActivityFeed';
@@ -27,6 +28,7 @@ export default function Home() {
           </motion.div>
         ) : (
           <motion.div key="board" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+            <ParallaxBackdrop />
             <Board />
             <TopBar />
             <ComboMeter />

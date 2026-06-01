@@ -75,14 +75,7 @@ export function Board() {
                 justifyContent: 'center',
               }}
             >
-              <div
-                className="rounded-2xl p-3"
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  boxShadow:
-                    'inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.4), 0 50px 130px -55px #000',
-                }}
-              >
+              <div className="board-frame">
                 {/* wrapper sized to the EXACT grid box so overlays (power-ups, cursors) align */}
                 <div
                   ref={gridRef}

@@ -32,7 +32,7 @@ export function JoinScreen() {
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 26 }}
-        className="glass relative z-10 w-full max-w-md rounded-3xl p-6 sm:p-8"
+        className="glass-raised relative z-10 w-full max-w-md rounded-3xl p-6 sm:p-8"
       >
         <div className="mb-1 flex items-center gap-2">
           <span className="h-2.5 w-2.5 rotate-45 rounded-[2px]" style={{ background: 'var(--accent)', boxShadow: '0 0 12px var(--accent)' }} />

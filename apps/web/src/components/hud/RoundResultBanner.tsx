@@ -20,7 +20,7 @@ export function RoundResultBanner() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="glass rounded-3xl px-8 py-7 text-center"
+              className="glass-raised rounded-3xl px-8 py-7 text-center"
               initial={{ scale: 0.85, y: 16 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0 }}
