@@ -40,6 +40,13 @@ export function startBroadcaster(io: IO): () => void {
   subscriber.on('message', onMessage);
   void subscriber.subscribe(KEYS.channel);
 
+  // Cursors are noisy: with many players, emitting the full list every tick
+  // forces a client re-render 16x/sec even when nothing moved. We instead emit
+  // at most every other tick (~8fps — plenty, the client interpolates), and skip
+  // the emit entirely when the live set is byte-for-byte identical to last time.
+  let cursorTickPhase = 0;
+  let lastCursorJson = '';
+
   const tick = setInterval(() => {
     if (buffer.size > 0) {
       const batch = Array.from(buffer.values());
@@ -47,14 +54,28 @@ export function startBroadcaster(io: IO): () => void {
       io.emit(EVENTS.tilesUpdate, batch);
     }
 
-    // Cursors: emit the fresh ones, prune the stale.
+    // Cursors: prune the stale, then emit on a slower cadence + only on change.
     const now = Date.now();
-    const live: CursorInfo[] = [];
+    let pruned = false;
     for (const [id, c] of cursors) {
-      if (now - c.ts > CURSOR_STALE_MS) cursors.delete(id);
-      else live.push({ id: c.id, name: c.name, color: c.color, x: c.x, y: c.y });
+      if (now - c.ts > CURSOR_STALE_MS) {
+        cursors.delete(id);
+        pruned = true;
+      }
     }
-    io.emit(EVENTS.cursorsUpdate, live);
+    cursorTickPhase = (cursorTickPhase + 1) % 2;
+    if (cursorTickPhase === 0 || pruned) {
+      const live: CursorInfo[] = [];
+      for (const c of cursors.values()) {
+        live.push({ id: c.id, name: c.name, color: c.color, x: c.x, y: c.y });
+      }
+      // Quantize coords into the key so sub-pixel jitter doesn't defeat the diff.
+      const json = JSON.stringify(live.map((c) => [c.id, Math.round(c.x * 400), Math.round(c.y * 400)]));
+      if (json !== lastCursorJson) {
+        lastCursorJson = json;
+        io.emit(EVENTS.cursorsUpdate, live);
+      }
+    }
   }, TICK_MS);
 
   const lbTimer = setInterval(() => {

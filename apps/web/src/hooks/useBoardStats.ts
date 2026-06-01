@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 import { TILE_COUNT } from '@ctb/shared';
-import { useGridStore } from '@/store/gridStore';
 import { useSessionStore } from '@/store/sessionStore';
+import { useThrottledTiles } from './useThrottledTiles';
 
 export interface BoardStats {
   claimed: number;
@@ -21,7 +21,8 @@ export interface BoardStats {
  */
 export function useBoardStats(): BoardStats {
   const myId = useSessionStore((s) => s.me?.id);
-  const tiles = useGridStore((s) => s.tiles);
+  // Throttled: the heavy whole-board scan runs a few times/sec, not 16×/sec.
+  const tiles = useThrottledTiles();
 
   return useMemo(() => {
     const byOwner = new Map<string, number>();

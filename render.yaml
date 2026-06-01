@@ -1,0 +1,54 @@
+# Render Blueprint — provisions all three services in one shot.
+#   • ctb-redis  : managed Key Value store (game state, cooldowns, pub/sub)
+#   • ctb-server : Socket.IO + Express realtime backend (port 4000)
+#   • ctb-web    : Next.js frontend (port 3000)
+#
+# Deploy by pushing this file to your repo, then New → Blueprint in Render.
+# See RENDER.md for the full walkthrough, including the two-pass URL setup.
+#
+# NOTE: Render injects a service's env vars as Docker build args automatically,
+# so NEXT_PUBLIC_SOCKET_URL set below is picked up by `ARG NEXT_PUBLIC_SOCKET_URL`
+# in apps/web/Dockerfile at build time — no special build-arg field needed.
+
+services:
+  # ── Managed Redis (Render "Key Value") ──────────────────────────────
+  - type: keyvalue
+    name: ctb-redis
+    plan: starter # Free has no persistence; Starter keeps the board across restarts
+    ipAllowList: [] # empty = reachable only from your Render services (private network)
+
+  # ── Realtime backend ────────────────────────────────────────────────
+  - type: web
+    name: ctb-server
+    runtime: docker
+    dockerfilePath: ./apps/server/Dockerfile
+    dockerContext: .
+    plan: starter # Socket.IO needs an always-on instance; Free sleeps + drops sockets
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "4000"
+      - key: REDIS_URL
+        fromService:
+          name: ctb-redis
+          type: keyvalue
+          property: connectionString
+      # Set to your web URL after first deploy, e.g. https://ctb-web.onrender.com
+      - key: CORS_ORIGIN
+        sync: false
+
+  # ── Frontend ────────────────────────────────────────────────────────
+  - type: web
+    name: ctb-web
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: PORT
+        value: "3000"
+      # Inlined into the client bundle at BUILD time (Render passes env vars as
+      # Docker build args). Point at the server's public URL. Changing this
+      # requires a rebuild of ctb-web, not just a restart.
+      - key: NEXT_PUBLIC_SOCKET_URL
+        sync: false

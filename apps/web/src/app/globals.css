@@ -48,15 +48,19 @@ body {
 /* Layered backdrop: deep base + pastel radial glow + faint grain. */
 .backdrop {
   position: fixed;
-  inset: 0;
+  /* Oversized + scaled so the pointer-parallax translate never exposes an edge.
+   * Parallax moves this layer via transform (GPU-composited, zero repaint),
+   * NOT by animating gradient positions (which would repaint the viewport). */
+  inset: -4%;
   z-index: 0;
   pointer-events: none;
-  /* Parallax offset driven by pointer (set on :root), kept tiny for subtlety. */
   --px: 0px;
   --py: 0px;
+  transform: translate3d(var(--px), var(--py), 0);
+  will-change: transform;
   background:
-    radial-gradient(120% 80% at calc(50% + var(--px)) calc(-10% + var(--py)), rgba(154, 166, 255, 0.12), transparent 60%),
-    radial-gradient(90% 70% at calc(85% + var(--px)) calc(110% + var(--py)), rgba(143, 227, 196, 0.08), transparent 55%),
+    radial-gradient(120% 80% at 50% -10%, rgba(154, 166, 255, 0.12), transparent 60%),
+    radial-gradient(90% 70% at 85% 110%, rgba(143, 227, 196, 0.08), transparent 55%),
     var(--bg);
 }
 /* Vignette — pulls the corners down so content sits inside a soft well of depth. */
@@ -81,6 +85,9 @@ body {
   -webkit-backdrop-filter: blur(18px) saturate(120%);
   border: 1px solid var(--hairline);
   box-shadow: var(--elev-2);
+  /* `contain: paint` keeps a panel's repaints from invalidating outside its
+   * box — invisible, but trims work when the board churns underneath. */
+  contain: paint;
 }
 
 /* Top-tier elevation for hero surfaces (join card, round banner, modals). */
@@ -121,17 +128,19 @@ body {
     0 0 0 1px rgba(0, 0, 0, 0.45),
     0 60px 140px -50px #000;
 }
-/* Soft contact shadow on the floor beneath the board — grounds it in space. */
+/* Soft contact shadow on the floor beneath the board — grounds it in space.
+ * NB: no blur() filter here. A blurred element under the pan/zoom transform
+ * repaints every frame and tanks framerate; a soft radial gradient gives the
+ * same look but composites for free. */
 .board-frame::after {
   content: '';
   position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: -34px;
-  height: 60px;
+  left: 4%;
+  right: 4%;
+  bottom: -30px;
+  height: 70px;
   border-radius: 50%;
-  background: radial-gradient(60% 100% at 50% 0%, rgba(0, 0, 0, 0.6), transparent 72%);
-  filter: blur(8px);
+  background: radial-gradient(50% 100% at 50% 0%, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.25) 45%, transparent 75%);
   pointer-events: none;
   z-index: -1;
 }
@@ -150,9 +159,12 @@ body {
     transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1),
     background-color 0.18s ease,
     box-shadow 0.2s ease;
-  will-change: transform;
+  /* NB: deliberately NO `will-change: transform` here. Setting it on all 1024
+   * tiles force-promotes every cell to its own GPU layer — huge memory cost and
+   * a classic source of jank. Promote only the tile being hovered. */
 }
 .tile:hover {
+  will-change: transform;
   transform: scale(1.18);
   background: rgba(255, 255, 255, 0.1);
   box-shadow:
@@ -161,23 +173,15 @@ body {
   z-index: 3;
 }
 .tile--owned {
-  /* Subtle vertical gradient + top highlight reads as a raised, lit surface. */
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--c) 88%, white 12%), var(--c) 62%, color-mix(in srgb, var(--c) 82%, black 18%));
+  background: var(--c);
   border-color: rgba(255, 255, 255, 0.28);
-  box-shadow:
-    0 0 10px -3px var(--c),
-    0 1px 0 inset rgba(255, 255, 255, 0.35),
-    0 -1px 0 inset rgba(0, 0, 0, 0.25),
-    0 3px 6px -3px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 10px -3px var(--c);
 }
 .tile--owned:hover {
-  transform: scale(1.16) translateZ(0);
+  transform: scale(1.16);
   box-shadow:
     0 0 16px -2px var(--c),
-    0 0 0 1px rgba(255, 255, 255, 0.35),
-    0 1px 0 inset rgba(255, 255, 255, 0.4),
-    0 6px 12px -4px rgba(0, 0, 0, 0.8);
+    0 0 0 1px rgba(255, 255, 255, 0.35);
   z-index: 3;
 }
 .tile--mine {
