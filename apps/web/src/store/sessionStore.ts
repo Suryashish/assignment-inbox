@@ -105,7 +105,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set((s) => ({ activity: [...items, ...s.activity].slice(0, 24) })),
   clearActivity: () => set({ activity: [] }),
   pushToast: (kind, message) =>
-    set((s) => ({ toasts: [...s.toasts, { id: ++toastSeq, kind, message }].slice(-4) })),
+    set((s) => {
+      // De-dupe: don't stack an identical toast (prevents spam when rapidly
+      // clicking a shielded tile now that the cooldown no longer throttles clicks).
+      if (s.toasts.some((t) => t.kind === kind && t.message === message)) return s;
+      return { toasts: [...s.toasts, { id: ++toastSeq, kind, message }].slice(-4) };
+    }),
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   resolveUser: (id) => {
     const known = get().namesById[id];

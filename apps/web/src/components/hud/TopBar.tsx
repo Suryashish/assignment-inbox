@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { colorHex } from '@ctb/shared';
 import { useSessionStore } from '@/store/sessionStore';
 import { useMyTileCount } from '@/hooks/useMyTileCount';
@@ -12,9 +13,17 @@ export function TopBar() {
   const myTiles = useMyTileCount();
   const connected = connection === 'connected';
 
+  // Inline two-tap confirm (no modal): first tap arms, second tap within 3s resets.
+  const [confirming, setConfirming] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onNewGame = () => {
-    if (window.confirm('Start a fresh game? This clears the board for everyone.')) {
+    if (confirming) {
+      if (timer.current) clearTimeout(timer.current);
+      setConfirming(false);
       resetGame();
+    } else {
+      setConfirming(true);
+      timer.current = setTimeout(() => setConfirming(false), 3000);
     }
   };
 
@@ -44,9 +53,13 @@ export function TopBar() {
         <button
           onClick={onNewGame}
           title="Clear the board and start fresh (affects everyone)"
-          className="glass flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium text-[var(--text-dim)] transition hover:text-white hover:shadow-[0_0_18px_-4px_var(--accent)]"
+          className={`glass flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
+            confirming
+              ? 'text-white shadow-[0_0_18px_-4px_#ff9a9a] ring-1 ring-[#ff9a9a]/50'
+              : 'text-[var(--text-dim)] hover:text-white hover:shadow-[0_0_18px_-4px_var(--accent)]'
+          }`}
         >
-          <span className="text-sm leading-none">↻</span> New game
+          <span className="text-sm leading-none">↻</span> {confirming ? 'Confirm reset?' : 'New game'}
         </button>
 
         <div className="glass flex items-center gap-3 rounded-full px-4 py-2">

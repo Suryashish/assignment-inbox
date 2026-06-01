@@ -21,7 +21,8 @@ export function CooldownIndicator() {
   }, [cooldownUntil]);
 
   const remaining = Math.max(0, cooldownUntil - now);
-  const active = remaining > 0;
+  // Below ~200ms the cooldown is effectively instant — showing the pill is just noise.
+  const active = remaining > 0 && cooldownMs >= 200;
   const pct = Math.min(1, remaining / cooldownMs);
 
   return (

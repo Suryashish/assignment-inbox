@@ -10,7 +10,7 @@ export const GRID_ROWS = 32;
 export const TILE_COUNT = GRID_COLS * GRID_ROWS;
 
 /** Per-user rate limit between captures (ms). Also the natural load governor. */
-export const COOLDOWN_MS = 100;
+export const COOLDOWN_MS = 20;
 
 /** A freshly captured tile is shielded this long (ms). Set 0 for pure overwrite. */
 export const LOCK_MS = 2500;
